@@ -64,6 +64,38 @@ function ConvertRowToVectors {
 	return $result
 }
 
+function GetMinimumPressCount {
+	[CmdletBinding()]
+	[OutputType([int])]
+	param(
+		[Parameter(Mandatory)]
+		$TargetState,
+
+		[Parameter(Mandatory)]
+		$ButtonVectors,
+
+		[Parameter(Mandatory)]
+		[int]$NumOfLights
+	)
+
+	for ($pressCount = 0; $pressCount -le $ButtonVectors.Count; $pressCount++) {
+		$combos = GetButtonPressCombos -NumOfButtons $ButtonVectors.Count -PressCount $pressCount
+		foreach ($combo in $combos) {
+			Write-Verbose "Testing button combo: $($combo -join ", ")"
+			$currentState = 0
+			foreach ($buttonIndex in $combo) {
+				$currentState = $currentState -bxor $ButtonVectors[$buttonIndex]
+				Write-Debug "Current state: $([Convert]::ToString($currentState,2).PadLeft($NumOfLights,'0'))"
+			}
+
+			if ($currentState -eq $TargetState) {
+				Write-Verbose "Found valid combination: $($combo -join ", ") resulting in all lights off"
+				return $pressCount
+			}
+		}
+	}
+}
+
 function SolveProblem1 {
 <#
 	STRATEGY: Converting lights and button configs to bitmasks, and brute-force running through possible button combos
@@ -86,23 +118,13 @@ function SolveProblem1 {
 		Write-Verbose "Processing line: $line"
 		$vectors = ConvertRowtoVectors -Data $line
 
-		:RowProcessing for ($pressCount = 0; $pressCount -le $vectors.Buttons.Count; $pressCount++) {
-			$combos = GetButtonPressCombos -NumOfButtons $vectors.Buttons.Count -PressCount $pressCount
-			foreach ($combo in $combos) {
-				Write-Verbose "Testing button combo: $($combo -join ", ")"
-				$currentState = 0
-				foreach ($buttonIndex in $combo) {
-					$currentState = $currentState -bxor $vectors.Buttons[$buttonIndex]
-					Write-Debug "Current state: $([Convert]::ToString($currentState,2).PadLeft($vectors.LightCount,'0'))"
-				}
-
-				if ($currentState -eq $vectors.Lights) {
-					Write-Verbose "Found valid combination: $($combo -join ", ") resulting in all lights off"
-					$answer += $pressCount
-					break RowProcessing
-				}
-			}
+		$processParams = @{
+			TargetState = $vectors.Lights
+			ButtonVectors = $vectors.Buttons
+			NumofLights = $vectors.LightCount
 		}
+		$rowResults = GetMinimumPressCount @processParams
+		$answer += $rowResults
 	}
 
 	return $answer
