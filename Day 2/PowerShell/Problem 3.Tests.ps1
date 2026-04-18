@@ -4,9 +4,9 @@
 	}
 
 	Context "Demo examples" {
-		It "Returns (11,22) when fed in 11-22" {
-			$startIndex = 11
-			$endIndex = 22
+		It "Returns (11,22) when fed in 10-30" {
+			$startIndex = 10
+			$endIndex = 30
 
 			$result = GetInvalidIDs -StartIndex $startIndex -EndIndex $endIndex
 

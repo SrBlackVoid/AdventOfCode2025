@@ -1,6 +1,6 @@
-function GetInvalidIDs {
+﻿function GetInvalidIDs {
 	[CmdletBinding()]
-	[OutputType([System.Object[]])]
+	[OutputType([System.Collections.Generic.List[int64]])]
 	param(
 		$StartIndex,
 		$EndIndex
@@ -9,17 +9,42 @@ function GetInvalidIDs {
 	$startIndexLength = $startIndex.ToString().Length
 	$endIndexLength = $endIndex.ToString().Length
 
-	if (-NOT ($startIndexLength..$endIndexLength) | Where-Object {
-		$_ % 2 -eq 0
-	}) {
-		return $null #Can't have odd-lengthed invalid IDs
-	}
+	$evenIndexLengths = $startIndexLength..$endIndexLength |
+		Where-Object { $_ % 2 -eq 0 }
 
-	$invalidIDs = @()
+	$invalidIDs = [System.Collections.Generic.List[int64]]::new()
+	foreach ($length in $evenIndexLengths) {
+		$halfLength = $length / 2
 
-	for ($i = $StartIndex; $i -le $EndIndex; $i++) {
-		if ($i.ToString() -match  "^(\d+)(?=\1$)") {
-			$invalidIDs += $i
+		# Override min if we're at the start boundary
+		$minHalf = if ($length -eq $startIndexLength) {
+			[int64]$StartIndex.ToString().Substring(0, $halfLength)
+		} else { [Math]::Pow(10,$halfLength - 1) }
+		if ([int64]"$minHalf$minHalf" -lt $StartIndex) {
+			$minHalf++
+		}
+
+		$maxHalf = if ($length -eq $endIndexLength) {
+			[int64]$EndIndex.ToString().Substring(0, $halfLength)
+		} else { [Math]::Pow(10, $halfLength) - 1 }
+		if ([int64]"$maxHalf$maxHalf" -gt $EndIndex) {
+			$maxHalf--
+		}
+
+		Write-Debug ([PSCustomObject]@{
+			StartIndex = $StartIndex
+			EndIndex = $EndIndex
+			Length = $length
+			MinHalf = $minHalf
+			MaxHalf = $maxHalf
+		} | Out-String)
+		$invalidIdHalves = $minHalf..$maxHalf
+
+		foreach ($halve in $invalidIdHalves) {
+			$candidateID = [int64]"$halve$halve"
+			if ($candidateID -ge $StartIndex -and $candidateID -le $EndIndex) {
+				$invalidIDs.Add($candidateID)
+			}
 		}
 	}
 
